@@ -1794,10 +1794,13 @@ function setPanel(q) {
   el.innerHTML = '<div class="rqrow"><span class="rqh">문제 ' + R.qn + '</span><div class="rqp">' + q.prompt + '</div></div><div class="lanes">' +
     q.choices.map((c, i) => '<span class="l' + i + '"><small>' + names[i] + '</small>' + c.html + '</span>').join('') + '</div>';
 }
-function showToast(text, kind, secs) {
+function showToast(text, kind, secs, asHtml) {
   R.toast = { t: secs || 2.5 };
-  const el = $('#runToast'); el.className = 'toast ' + (kind || ''); el.textContent = text; el.hidden = false;
+  const el = $('#runToast'); el.className = 'toast ' + (kind || '');
+  if (asHtml) el.innerHTML = text; else el.textContent = text;
+  el.hidden = false;
 }
+const escHtml = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 function overlay(kind) {
   const el = $('#runOverlay');
   if (kind === 'none') { el.hidden = true; return; }
@@ -1948,7 +1951,7 @@ function resolveGate() {
     const guard = R.shield > 0;
     if (!guard) { R.hearts--; R.invul = 1; R.shake = 0.3; R.mood = 'ouch'; R.moodT = 1; }
     sfx('bad');
-    showToast((guard ? '오답이지만 무적이라 하트는 그대로입니다. 정답은 ' : '오답. 정답은 ') + q.choices[q.correct].text + ' (' + q.explain + ')', 'bad', 4);
+    showToast(RF.richText(escHtml((guard ? '오답이지만 무적이라 하트는 그대로입니다. 정답은 ' : '오답. 정답은 ') + q.choices[q.correct].text + ' (' + q.explain + ')')), 'bad', 4, true);
     if (!guard && R.hearts <= 0) { hudUpdate(); setTimeout(gameOver, 900); R.state = 'dying'; return; }
   }
   R.gateCount++;
@@ -2242,13 +2245,49 @@ function fitText(ctx, text, maxW, size) {
   ctx.font = s + 'px Jua, sans-serif';
   while (ctx.measureText(text).width > maxW && s > 11) { s -= 1; ctx.font = s + 'px Jua, sans-serif'; }
 }
+/* 캔버스에 분수를 세로로 그리는 글자 그리기: 'y=5/(x−3)+2' 같은 글에서 a/b 부분만 분수로 바꾼다 */
+function mathSegs(text) {
+  const re = /(\([^()]+\)|\d+)\/(\([^()]+\)|x|\d+)/g, strip = x => /^\(.*\)$/.test(x) ? x.slice(1, -1) : x;
+  const segs = []; let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) segs.push({ s: text.slice(last, m.index) });
+    segs.push({ n: strip(m[1]), d: strip(m[2]) }); last = re.lastIndex;
+  }
+  if (last < text.length) segs.push({ s: text.slice(last) });
+  return segs;
+}
+function drawMath(ctx, text, cx, cy, maxW, size) {
+  const segs = mathSegs(text); let s = size, w = 0;
+  const measure = () => {
+    w = 0;
+    segs.forEach(g => {
+      if (g.s !== undefined) { ctx.font = s + 'px Jua, sans-serif'; g.w = ctx.measureText(g.s).width; }
+      else { ctx.font = (s * 0.82) + 'px Jua, sans-serif'; g.w = Math.max(ctx.measureText(g.n).width, ctx.measureText(g.d).width) + 8; }
+      w += g.w;
+    });
+  };
+  measure();
+  while (w > maxW && s > 11) { s -= 1; measure(); }
+  let x = cx - w / 2;
+  ctx.textBaseline = 'middle';
+  segs.forEach(g => {
+    if (g.s !== undefined) { ctx.font = s + 'px Jua, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(g.s, x, cy); }
+    else {
+      const fs = s * 0.82; ctx.font = fs + 'px Jua, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(g.n, x + g.w / 2, cy - fs * 0.62); ctx.fillText(g.d, x + g.w / 2, cy + fs * 0.7);
+      ctx.fillRect(x + 1, cy - 1, g.w - 2, 2.2);
+    }
+    x += g.w;
+  });
+  ctx.textAlign = 'left';
+}
 function drawGate(ctx, g) {
   const x = g.x; if (x > RW + 160 || x < -160) return;
   ctx.save();
   ctx.strokeStyle = C.asym; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
   ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 503); ctx.stroke(); ctx.setLineDash([]);
   g.q.choices.forEach((c, i) => {
-    const y = LANES[i], bw = 190, bh = 56;
+    const y = LANES[i], bw = 208, bh = 58;
     const dim = g.done && i !== g.q.correct;
     ctx.globalAlpha = dim ? 0.45 : 1;
     ctx.fillStyle = 'rgba(31,27,46,.2)'; ctx.fillRect(x - bw / 2 + 5, y - 6 - bh + 5, bw, bh);
@@ -2256,7 +2295,7 @@ function drawGate(ctx, g) {
     ctx.beginPath(); ctx.rect(x - bw / 2, y - 6 - bh, bw, bh); ctx.fill(); ctx.stroke();
     if (g.done && i === g.q.correct) { ctx.strokeStyle = C.green; ctx.lineWidth = 6; ctx.strokeRect(x - bw / 2 - 5, y - 6 - bh - 5, bw + 10, bh + 10); }
     ctx.fillStyle = C.ink; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    fitText(ctx, c.text, bw - 16, 22); ctx.fillText(c.text, x, y - 6 - bh / 2 + 1);
+    drawMath(ctx, c.text, x, y - 6 - bh / 2 + 1, bw - 16, 22);
     ctx.globalAlpha = 1;
   });
   ctx.restore();
