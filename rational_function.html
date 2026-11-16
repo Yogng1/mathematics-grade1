@@ -492,6 +492,10 @@ html.mobplay, html.mobplay body { overflow: hidden; overscroll-behavior: none; }
 #tab-run.mob .pad { justify-content: center; }
 #tab-run.mob .pad .item { height: 27%; }
 
+.tapnote { display: none; }
+#tab-run.mob .tapnote { display: block; flex: none; text-align: center; font-family: var(--font-d); font-size: 1.15rem; line-height: 1.3; color: var(--ink); padding: 6px 4px; border: 3px dashed var(--ink); border-radius: 12px; background: #fff7df; }
+#tab-run.mob .pad { justify-content: center; }
+
 </style>
 </head>
 <body>
@@ -625,6 +629,7 @@ html.mobplay, html.mobplay body { overflow: hidden; overscroll-behavior: none; }
         <div class="toast" id="runToast" hidden></div>
       </div>
       <div class="pad">
+        <div class="tapnote">탭하면 점프!</div>
         <button class="btn" id="btnJump"><canvas class="ico" id="icoJump" width="56" height="56"></canvas><span>점프</span><kbd>Space</kbd></button>
         <button class="btn sub item empty" id="btnClock"><canvas class="ico" id="icoClock" width="56" height="56"></canvas><span>시계</span><kbd>Q</kbd><b id="clockN">0</b></button>
         <button class="btn sub item empty" id="btnShield"><canvas class="ico" id="icoShield" width="56" height="56"></canvas><span>무적</span><kbd>W</kbd><b id="shieldN">0</b></button>
@@ -2034,7 +2039,7 @@ document.addEventListener('keydown', e => {
 const press = (id, fn) => $('#' + id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
 press('btnJump', jump);
 press('btnClock', () => useClock()); press('btnBow', () => useBow()); press('btnShield', () => useShield());
-/* 터치: 위아래로 밀면 레인 이동(밀고 있는 동안 계속 이동), 짧게 탭하면 점프. 손가락마다 따로 추적한다 */
+/* 터치: 위아래로 밀면 레인 이동(한 번 쓸 때 한 칸), 짧게 탭하면 점프. 손가락마다 따로 추적한다 */
 const sws = new Map();
 const swHost = $('#tab-run');
 swHost.addEventListener('pointerdown', e => {
@@ -2044,9 +2049,9 @@ swHost.addEventListener('pointerdown', e => {
   if (mobRun && e.target.setPointerCapture) { try { e.target.setPointerCapture(e.pointerId); } catch (x) {} }
 });
 swHost.addEventListener('pointermove', e => {
-  const s = sws.get(e.pointerId); if (!s) return;
+  const s = sws.get(e.pointerId); if (!s || s.moved) return;   /* 한 번 쓸 때 한 칸만 */
   const dx = e.clientX - s.x, dy = e.clientY - s.y;
-  if (Math.abs(dy) > 26 && Math.abs(dy) > Math.abs(dx)) { laneMove(dy < 0 ? -1 : 1); s.x = e.clientX; s.y = e.clientY; s.moved = true; }
+  if (Math.abs(dy) > 26 && Math.abs(dy) > Math.abs(dx)) { laneMove(dy < 0 ? -1 : 1); s.moved = true; }
 });
 swHost.addEventListener('pointerup', e => {
   const s = sws.get(e.pointerId); if (!s) return;
