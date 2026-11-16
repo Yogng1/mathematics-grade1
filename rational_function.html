@@ -386,6 +386,10 @@ kbd .tri { vertical-align: middle; }
   .hcard .hcv { height: 150px; }
 }
 
+.hrow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 10px; }
+.hrow h2 { margin: 0; }
+.gform { padding: 2px 12px; font-size: 1.25rem; background: #fff7df; border: 3px solid var(--ink); border-radius: 10px; }
+
 </style>
 </head>
 <body>
@@ -394,7 +398,7 @@ kbd .tri { vertical-align: middle; }
     <canvas id="logoCv" width="144" height="144" aria-hidden="true"></canvas>
     <div class="ttl">
       <h1>유리함수 정복하기</h1>
-      <p>공통수학2 · 유리함수 y = k/x 와 평행이동, 표준형</p>
+      <p>공통수학2 · 유리함수 y = <span class="frac"><span class="n">k</span><span class="d">x</span></span> 와 평행이동, 표준형</p>
     </div>
     <button class="btn sm sub" id="homeBtn" hidden>메인으로</button>
   </header>
@@ -435,7 +439,7 @@ kbd .tri { vertical-align: middle; }
     <!-- 탐험 -->
     <section id="tab-explore">
       <div class="subtabs">
-        <button data-sub="A" class="on">1. 기본형 y=k/x</button>
+        <button data-sub="A" class="on">1. 기본형 y = <span class="frac"><span class="n">k</span><span class="d">x</span></span></button>
         <button data-sub="B">2. 평행이동</button>
         <button data-sub="C">3. 표준형으로 바꾸기</button>
       </div>
@@ -457,7 +461,8 @@ kbd .tri { vertical-align: middle; }
       <div id="exB" class="ex" hidden>
         <div class="card plot"><canvas id="cvB" aria-label="평행이동한 유리함수 그래프"></canvas></div>
         <div class="card">
-          <h2>평행이동 시켜 보기</h2>
+          <div class="hrow"><h2>평행이동 시켜 보기</h2>
+            <span class="gform math">y = <span class="frac"><span class="n">k</span><span class="d">x − p</span></span> + q</span></div>
           <label class="slide"><span>k = <output id="kBout">2</output></span>
             <input id="kB" type="range" min="-6" max="6" step="1" value="2"></label>
           <label class="slide"><span>p (x축 방향) = <output id="pBout">0</output></span>
@@ -465,7 +470,7 @@ kbd .tri { vertical-align: middle; }
           <label class="slide"><span>q (y축 방향) = <output id="qBout">0</output></span>
             <input id="qB" type="range" min="-6" max="6" step="1" value="0"></label>
           <dl id="readB" class="read"></dl>
-          <p class="muted" style="font-size:.92rem">회색 점선은 처음 그래프 y=k/x 입니다.</p>
+          <p class="muted" style="font-size:.92rem">회색 점선은 처음 그래프 y = <span class="frac"><span class="n">k</span><span class="d">x</span></span> 입니다.</p>
         </div>
       </div>
 
@@ -580,6 +585,8 @@ function coefStr(q) { return q === 1 ? '' : q === -1 ? MINUS : fmtTxt(q); }
 function fracHTML(n, d) {
   return '<span class="frac"><span class="n">' + n + '</span><span class="d">' + d + '</span></span>';
 }
+const YKX = 'y&nbsp;=&nbsp;' + fracHTML('k', 'x');
+const YKXPQ = 'y&nbsp;=&nbsp;' + fracHTML('k', 'x' + MINUS + 'p') + '&nbsp;+&nbsp;q';
 function numHTML(a) {
   if (isInt(a)) return String(Math.round(a));
   return '<span class="frac sm"><span class="n">' + Math.round(a * 2) + '</span><span class="d">2</span></span>';
@@ -661,7 +668,7 @@ GEN.dom0 = function (r) {
     solve: { curves: [{ k: k, p: 0, q: 0 }], asym: true, labels: true },
     explain: askDom
       ? '분모가 0이 될 수 없으므로 정의역은 <b>x≠0</b>인 실수 전체입니다.'
-      : k > 0 || k < 0 ? 'k/x는 분자가 0이 아니므로 값이 0이 될 수 없습니다. 치역은 <b>y≠0</b>인 실수 전체입니다.' : ''
+      : k > 0 || k < 0 ? fracHTML('k', 'x') + '는 분자가 0이 아니므로 값이 0이 될 수 없습니다. 치역은 <b>y≠0</b>인 실수 전체입니다.' : ''
   };
 };
 
@@ -744,7 +751,7 @@ GEN.asy = function (r) {
     prompt: '함수 ' + exprHTML(k, p, q) + ' 의 그래프의 점근선의 방정식을 쓰시오.',
     fields: [{ label: 'x =', answer: p }, { label: 'y =', answer: q }],
     solve: { curves: [{ k: k, p: p, q: q }], asym: true, labels: true, asymLabels: true },
-    explain: '분모가 0이 되는 x=' + fmtTxt(p) + ' 이 세로 점근선입니다. x가 매우 커지면 k/(x−p)는 0에 가까워지므로 y=' + fmtTxt(q) + ' 이 가로 점근선입니다.'
+    explain: '분모가 0이 되는 x=' + fmtTxt(p) + ' 이 세로 점근선입니다. x가 매우 커지면 ' + fracHTML('k', 'x' + MINUS + 'p') + ' 는 0에 가까워지므로 y=' + fmtTxt(q) + ' 이 가로 점근선입니다.'
   };
 };
 
@@ -776,7 +783,7 @@ GEN.shift = function (r) {
       mode: 'choice', level: 2,
       prompt: '함수 ' + exprHTML(k, 0, 0) + ' 의 그래프를 x축의 방향으로 <b>' + fmtTxt(p) + '</b>만큼, y축의 방향으로 <b>' + fmtTxt(q) + '</b>만큼 평행이동한 그래프의 식은?',
       choices: b.choices, correct: b.correct, solve: solve,
-      explain: 'x 대신 x−(' + fmtTxt(p) + '), y 대신 y−(' + fmtTxt(q) + ') 를 넣으면 y−(' + fmtTxt(q) + ') = k/(x−(' + fmtTxt(p) + ')) 이므로<br>' + exprHTML(k, p, q) + ' 입니다.'
+      explain: 'x 대신 x−(' + fmtTxt(p) + '), y 대신 y−(' + fmtTxt(q) + ') 를 넣으면 y−(' + fmtTxt(q) + ') = ' + fracHTML('k', 'x−(' + fmtTxt(p) + ')') + ' 이므로<br>' + exprHTML(k, p, q) + ' 입니다.'
     };
   }
   return {
@@ -784,7 +791,7 @@ GEN.shift = function (r) {
     prompt: '함수 ' + exprHTML(k, p, q) + ' 의 그래프는 ' + exprHTML(k, 0, 0) + ' 의 그래프를 x축의 방향으로 몇 만큼, y축의 방향으로 몇 만큼 평행이동한 것인지 쓰시오.',
     fields: [{ label: 'x축 방향', answer: p }, { label: 'y축 방향', answer: q }],
     solve: solve,
-    explain: 'y=k/(x−p)+q 는 y=k/x 를 x축 방향으로 p, y축 방향으로 q 만큼 옮긴 그래프입니다. 여기서 p=' + fmtTxt(p) + ', q=' + fmtTxt(q) + ' 입니다.'
+    explain: YKXPQ + ' 는 ' + YKX + ' 를 x축 방향으로 p, y축 방향으로 q 만큼 옮긴 그래프입니다. 여기서 p=' + fmtTxt(p) + ', q=' + fmtTxt(q) + ' 입니다.'
   };
 };
 
@@ -813,7 +820,7 @@ GEN.e2g = function (r) {
     graph: g,
     choices: b.choices, correct: b.correct,
     solve: null,
-    explain: '점근선이 x=' + fmtTxt(p) + ', y=' + fmtTxt(q) + ' 이므로 y=k/(x−(' + fmtTxt(p) + '))+(' + fmtTxt(q) + ') 꼴입니다. 점 (' + fmtTxt(p + 1) + ', ' + fmtTxt(k + q) + ') 를 대입하면 k=' + fmtTxt(k) + ' 입니다.'
+    explain: '점근선이 x=' + fmtTxt(p) + ', y=' + fmtTxt(q) + ' 이므로 y=' + fracHTML('k', 'x−(' + fmtTxt(p) + ')') + '+(' + fmtTxt(q) + ') 꼴입니다. 점 (' + fmtTxt(p + 1) + ', ' + fmtTxt(k + q) + ') 를 대입하면 k=' + fmtTxt(k) + ' 입니다.'
   };
 };
 
@@ -837,7 +844,7 @@ GEN.std = function (r) {
   ex += '<br>따라서 ' + exprHTML(s.k, s.p, s.q) + ' 입니다.';
   return {
     mode: 'input', level: 3,
-    prompt: stdHTML(s.a, s.b, s.c, s.d) + ' 를 y = k/(x−p) + q 꼴로 나타낼 때, k, p, q 의 값을 구하시오.' + (hard ? ' (k, p는 버튼이 0.5씩 바뀝니다)' : ''),
+    prompt: stdHTML(s.a, s.b, s.c, s.d) + ' 를 ' + YKXPQ + ' 꼴로 나타낼 때, k, p, q 의 값을 구하시오.' + (hard ? ' (k, p는 버튼이 0.5씩 바뀝니다)' : ''),
     fields: [{ label: 'k =', answer: s.k, step: hard ? 0.5 : 1 }, { label: 'p =', answer: s.p, step: hard ? 0.5 : 1 }, { label: 'q =', answer: s.q, step: 1 }],
     solve: { curves: [{ k: s.k, p: s.p, q: s.q }], asym: true, labels: true, asymLabels: true },
     explain: ex
@@ -918,7 +925,7 @@ RUN.rstd = function (r) {
   const den = lin(s.c, s.d);
   const split = coefStr(s.q) + '(' + den + ')' + (s.K > 0 ? '+' : MINUS) + Math.abs(s.K);
   return { mode: 'choice', level: 3,
-    prompt: stdHTML(s.a, s.b, s.c, s.d) + '&nbsp;=&nbsp;' + fracHTML(split, den) + ' 을 y=k/(x−p)+q 꼴로 바꾸면?',
+    prompt: stdHTML(s.a, s.b, s.c, s.d) + '&nbsp;=&nbsp;' + fracHTML(split, den) + ' 을 ' + YKXPQ + ' 꼴로 바꾸면?',
     choices: b.choices, correct: b.correct,
     explain: '몫 ' + fmtTxt(s.q) + ' 이 q, 나머지 ' + fmtTxt(s.K) + ' 이 k, 분모에서 p=' + fmtTxt(s.p) };
 };
@@ -958,8 +965,8 @@ const LEVELS = {
 };
 const RUN_LEVELS = { 1: ['rquad', 'rfar', 'rdom0'], 2: ['rasy', 'rdom', 'rshift'], 3: ['rsplit'] };
 const LEVEL_INFO = {
-  1: { name: '기본형', desc: 'y=k/x 의 정의역과 치역, 점근선, 사분면, 원점과의 거리' },
-  2: { name: '평행이동', desc: 'y=k/(x−p)+q 의 점근선, 정의역과 치역, 그래프와 식 연결' },
+  1: { name: '기본형', desc: YKX + ' 의 정의역과 치역, 점근선, 사분면, 원점과의 거리' },
+  2: { name: '평행이동', desc: YKXPQ + ' 의 점근선, 정의역과 치역, 그래프와 식 연결' },
   3: { name: '종합', desc: '표준형 변환과 점을 지나는 함수까지 섞은 실전 세트' }
 };
 const TYPE_LABEL = {
@@ -998,7 +1005,7 @@ function answerText(q) {
 }
 
 const API = {
-  richText, rng, ri, nz, pick, shuffle, fmtTxt, coefStr, numHTML, fracHTML, xm, lin, exprText, exprHTML, symHTML, stdHTML,
+  YKX, YKXPQ, richText, rng, ri, nz, pick, shuffle, fmtTxt, coefStr, numHTML, fracHTML, xm, lin, exprText, exprHTML, symHTML, stdHTML,
   parseNum, genQuestion, genSet, grade, answerText, stdParams, GEN, RUN, LEVELS, RUN_LEVELS, LEVEL_INFO, TYPE_LABEL, MINUS
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API; else root.RF = API;
@@ -1452,7 +1459,7 @@ function renderC() {
   h += '</div>';
 
   /* 3단계: 정리만 보여 준다 */
-  h += '<div class="step ' + (st < 3 ? 'locked' : '') + '"><div class="sh"><span class="badge">3</span>y = k/(x−p) + q 꼴로 정리하기</div>';
+  h += '<div class="step ' + (st < 3 ? 'locked' : '') + '"><div class="sh"><span class="badge">3</span>' + RF.YKXPQ + ' 꼴로 정리하기</div>';
   if (st >= 3) {
     if (cs.hard) h += '<p class="math">y&nbsp;=&nbsp;' + RF.fracHTML(RF.fmtTxt(s.K), RF.lin(s.c, s.d)) + '&nbsp;' + (s.q < 0 ? MINUS : '+') + '&nbsp;' + Math.abs(s.q) +
       '&nbsp;=&nbsp;' + RF.fracHTML(RF.numHTML(s.k), RF.xm(s.p)) + '&nbsp;' + (s.q < 0 ? MINUS : '+') + '&nbsp;' + Math.abs(s.q) + '</p>' +
