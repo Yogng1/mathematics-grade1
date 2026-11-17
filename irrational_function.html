@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>무리함수 탐험</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* 구성: 방안지 위에 굵은 테두리의 만화 컷 같은 카드를 배치한다 (색감만 라벤더/민트/코랄로 변경) */
+  --paper: #f1ebff;
+  --grid: #dcd0f6;
+  --card: #fffdf7;
+  --ink: #1f1b2e;
+  --muted: #5d586f;
+  --base: #ff8a3d;
+  --cy: #14b8a6;
+  --cx: #ff5d8f;
+  --co: #4f7cff;
+  --yellow: #ffd23f;
+  --font-d: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  --font-b: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 28px 28px; color: var(--ink); font-family: var(--font-b); font-size: 17px; line-height: 1.6;
+}
+h1, h2, h3 { font-family: var(--font-d); font-weight: 400; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+button { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1000px; margin: 0 auto; padding: 18px 16px 48px; }
+:focus-visible { outline: 3px dashed var(--co); outline-offset: 3px; }
+
+.top { display: flex; align-items: center; gap: 14px; padding: 6px 0 14px; }
+.logo { width: 68px; height: 68px; flex: none; }
+.top h1 { font-size: clamp(1.7rem, 5vw, 2.5rem); line-height: 1.1; }
+.top p { color: var(--muted); font-size: .95rem; margin-top: 4px; }
+.top p .fx { font-size: 1em; }
+
+/* 탭 */
+.tabs { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+.tabs button {
+  font-family: var(--font-d); font-size: 1.15rem; padding: 7px 20px; display: inline-flex; align-items: baseline; gap: .45em;
+  background: var(--card); border: 3px solid var(--ink); border-radius: 14px 6px 14px 6px; box-shadow: 3px 3px 0 var(--ink); cursor: pointer;
+}
+.tabs button[aria-selected="true"] { background: var(--yellow); transform: rotate(-1.2deg); }
+
+.card { background: var(--card); border: 3px solid var(--ink); border-radius: 18px 6px 20px 8px; box-shadow: 6px 6px 0 var(--ink); padding: 18px; }
+.card h2 { font-size: 1.45rem; margin-bottom: 10px; }
+.muted { color: var(--muted); }
+
+.btn {
+  font-family: var(--font-d); font-size: 1.1rem; background: var(--yellow);
+  border: 3px solid var(--ink); border-radius: 14px 6px 14px 6px; padding: 7px 20px;
+  box-shadow: 3px 3px 0 var(--ink); cursor: pointer; transition: transform .08s, box-shadow .08s;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.btn.sub { background: var(--card); }
+.btn.sm { font-size: .95rem; padding: 4px 12px; }
+
+.ex { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.plot { padding: 10px; }
+.plot canvas { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; }
+.plotnote { margin: 8px 4px 0; font-size: .95rem; color: var(--muted); line-height: 1.75; }
+.plotnote .math { font-size: 1.02em; }
+
+/* 수식 */
+.math { font-size: 1.12em; white-space: nowrap; }
+.math.big { font-size: 1.7rem; }
+.fx { display: inline-flex; align-items: baseline; gap: .3em; white-space: nowrap; }
+.fx.tight { gap: .05em; }
+.sq { display: inline-block; position: relative; padding-left: .8em; line-height: 0; }
+.sq svg.rd { position: absolute; left: 0; top: 0; width: .8em; height: 100%; overflow: visible; }
+.sq svg.rd path { fill: none; stroke: currentColor; stroke-width: 2px; stroke-linejoin: miter; stroke-linecap: butt; vector-effect: non-scaling-stroke; }
+.sq .ov { display: inline-block; border-top: 2px solid currentColor; padding: .1em .22em 0 .05em; line-height: 1.25; }
+
+.base { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; background: #fff3e6; border: 2px dashed var(--ink); border-radius: 10px; margin-bottom: 12px; }
+.base .tag { font-family: var(--font-d); background: var(--base); color: #fff; border: 2px solid var(--ink); border-radius: 8px; padding: 0 9px; font-size: .92rem; }
+
+/* 1번 카드: 대칭 버튼 */
+.symbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.sbtn {
+  font-family: var(--font-d); font-size: 1.1rem; background: #fff; border: 3px solid var(--ink); border-radius: 14px 6px 14px 6px;
+  box-shadow: 3px 3px 0 var(--ink); padding: 10px 6px; cursor: pointer; display: grid; gap: 2px; justify-items: center; line-height: 1.2;
+  transition: transform .08s, box-shadow .08s, background .15s;
+}
+.sbtn small { font-family: var(--font-b); font-size: .8rem; color: var(--muted); line-height: 1.3; text-align: center; }
+.sbtn .dot { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--ink); background: var(--c); }
+.sbtn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+.sbtn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+.sbtn[aria-pressed="true"] { background: var(--c); color: #fff; transform: rotate(-1.2deg); }
+.sbtn[aria-pressed="true"] small { color: #fff; }
+.sbtn[aria-pressed="true"] .dot { background: #fff; }
+
+.empty { text-align: center; padding: 20px 10px; color: var(--muted); border: 2px dashed #b9b4c9; border-radius: 12px; }
+.reset { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* 2번 카드: 슬라이더 */
+.slide { display: grid; gap: 2px; margin: 8px 0 12px; }
+.slide span.lb { font-family: var(--font-d); font-size: 1.1rem; }
+.slide output { display: inline-block; min-width: 2.2em; padding: 0 .4em; background: var(--yellow); border: 2px solid var(--ink); border-radius: 8px; text-align: center; font-family: var(--font-b); }
+.slide.c2 output { background: #ffc2d4; }
+input[type="range"] { width: 100%; accent-color: var(--co); height: 28px; }
+.slide.c2 input[type="range"] { accent-color: var(--cx); }
+.check { display: flex; gap: 8px; align-items: center; margin: 4px 0 8px; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.chip { font-family: var(--font-d); font-size: 1rem; padding: 2px 14px; background: #fff; border: 3px solid var(--ink); border-radius: 999px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--co); color: #fff; }
+.chips.c2 .chip[aria-pressed="true"] { background: var(--cx); }
+.tip { margin-top: 10px; padding: 7px 10px; background: #fff4c4; border-left: 5px solid var(--ink); font-size: .94rem; }
+
+@media (max-width: 760px) {
+  .ex { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 14px; box-shadow: 4px 4px 0 var(--ink); }
+  .math.big { font-size: 1.5rem; }
+  .tabs button { font-size: 1rem; padding: 6px 14px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <svg class="logo" viewBox="0 0 72 72" aria-hidden="true">
+      <rect x="4" y="4" width="64" height="64" rx="14" fill="#ffd23f" stroke="#1f1b2e" stroke-width="4"/>
+      <path d="M8 36H64M36 8V64" stroke="#1f1b2e" stroke-width="2.5" fill="none"/>
+      <path d="M36 36 Q40 20 62 18" stroke="#1f1b2e" stroke-width="9" fill="none" stroke-linecap="round"/>
+      <path d="M36 36 Q40 20 62 18" stroke="#ff8a3d" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <path d="M36 36 Q32 20 10 18" stroke="#14b8a6" stroke-width="5" fill="none" stroke-linecap="round" opacity=".55"/>
+    </svg>
+    <div>
+      <h1>무리함수 탐험</h1>
+      <p id="sub"></p>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="카드 선택">
+    <button role="tab" data-tab="sym" aria-selected="true" id="tabSym"></button>
+    <button role="tab" data-tab="a" aria-selected="false" id="tabA"></button>
+  </nav>
+
+  <main>
+    <!-- 1번 카드: y=√x 대칭이동 -->
+    <section id="tab-sym">
+      <div class="ex">
+        <div class="card plot">
+          <canvas id="cv1" aria-label="y=√x 그래프와 대칭이동한 그래프"></canvas>
+          <p class="plotnote" id="note1"></p>
+        </div>
+        <div class="card">
+          <h2>대칭이동 시켜 보기</h2>
+          <div class="base"><span class="tag">처음 그래프</span><span class="math" id="baseF" style="font-size:1.5rem"></span></div>
+          <div class="symbtns" role="group" aria-label="대칭 선택">
+            <button class="sbtn" data-k="y" aria-pressed="false" style="--c:var(--cy)"><i class="dot"></i>y축 대칭<small>x 대신 −x 대입</small></button>
+            <button class="sbtn" data-k="x" aria-pressed="false" style="--c:var(--cx)"><i class="dot"></i>x축 대칭<small>y 대신 −y 대입</small></button>
+            <button class="sbtn" data-k="o" aria-pressed="false" style="--c:var(--co)"><i class="dot"></i>원점 대칭<small>x, y 대신<br>−x, −y 대입</small></button>
+          </div>
+          <div id="results"></div>
+          <div class="reset"><button class="btn sm" id="allBtn">네 그래프 모두 보기</button><button class="btn sm sub" id="resetBtn">처음으로</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2번 카드: y=√(ax) -->
+    <section id="tab-a" hidden>
+      <div class="ex">
+        <div class="card plot">
+          <canvas id="cv2" aria-label="y=√(ax) 그래프"></canvas>
+          <p class="plotnote" id="note2"></p>
+        </div>
+        <div class="card">
+          <h2>a의 크기 바꿔 보기</h2>
+          <div class="base"><span class="tag">일반형</span><span class="math" id="genF" style="font-size:1.5rem"></span><span class="muted" style="font-size:.95rem">(a ≠ 0)</span></div>
+
+          <label class="slide"><span class="lb"><span id="a1lab">a</span> = <output id="a1out">3</output></span>
+            <input id="a1" type="range" min="-9" max="9" step="1" value="3"></label>
+          <div class="chips" id="sg1" role="group" aria-label="식의 부호"></div>
+
+          <label class="check"><input id="cmp" type="checkbox"> 곡선 하나 더 겹쳐 비교하기</label>
+          <div id="a2box" hidden>
+            <label class="slide c2"><span class="lb">a<sub>2</sub> = <output id="a2out">4</output></span>
+              <input id="a2" type="range" min="-9" max="9" step="1" value="4"></label>
+            <div class="chips c2" id="sg2" role="group" aria-label="2번 곡선의 식의 부호"></div>
+          </div>
+
+          <label class="check"><input id="ghost" type="checkbox" checked> 기준선 <span id="ghostF" class="math" style="margin-left:2px"></span> (회색 점선) 보기</label>
+          <div class="tip">a 를 −9 부터 9 까지 바꿔 보세요. a = 0 은 제외합니다.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+'use strict';
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const M = '−';
+const INK = '#1f1b2e', BASE = '#ff8a3d', C1 = '#4f7cff', C2 = '#ff5d8f', GHOST = '#8c88a0';
+const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- 수식 (HTML) ---------- */
+const RAD = '<svg class="rd" viewBox="0 0 10 20" preserveAspectRatio="none" aria-hidden="true"><path d="M0.5 12.5 L2.6 11 L5.2 18.5 L9.6 0 L10 0"/></svg>';
+const sq = inner => '<span class="sq" role="img" aria-label="루트 ' + inner + '">' + RAD + '<span class="ov">' + inner + '</span></span>';
+const fx = (parts, tight) => '<span class="fx' + (tight ? ' tight' : '') + '">' + parts.map(p => '<span>' + p + '</span>').join('') + '</span>';
+const neg = html => fx([M, html], true);
+const fmt = n => (n < 0 ? M : '') + Math.abs(n);
+const cs = a => a === 1 ? '' : a === -1 ? M : fmt(a);                  /* 계수 표기 */
+const fa = a => fx(['y', '=', sq(cs(a) + 'x')]);                          /* y=√(ax) 꼴 */
+const F = {
+  base: fx(['y', '=', sq('x')]),
+  gen: fx(['y', '=', sq('ax')])
+};
+
+/* ---------- 공통 그래프 도구 ---------- */
+const XR = [-10, 10], YR = [-7.5, 7.5];
+function fit(cv) {
+  const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return null;
+  const pw = Math.round(w * dpr), ph = Math.round(h * dpr);
+  if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { c: c, W: w, H: h };
+}
+function halo(c, t, x, y, font, col, al) {
+  c.font = font; c.textAlign = al || 'center'; c.textBaseline = 'middle';
+  c.lineWidth = 4; c.strokeStyle = '#fffdf7'; c.lineJoin = 'round'; c.strokeText(t, x, y); c.fillStyle = col || INK; c.fillText(t, x, y);
+}
+function frame(c, W, H, hooks) {
+  const sx = W / (XR[1] - XR[0]), sy = H / (YR[1] - YR[0]);
+  const X = x => (x - XR[0]) * sx, Y = y => H - (y - YR[0]) * sy;
+  c.clearRect(0, 0, W, H); c.fillStyle = '#fffdf7'; c.fillRect(0, 0, W, H);
+  if (hooks && hooks.bg) hooks.bg(X, Y);
+  c.lineWidth = 1;
+  for (let x = XR[0]; x <= XR[1]; x++) { c.strokeStyle = x % 5 === 0 ? '#cfc2ee' : '#e8e0f8'; c.beginPath(); c.moveTo(X(x), 0); c.lineTo(X(x), H); c.stroke(); }
+  for (let y = Math.ceil(YR[0]); y <= YR[1]; y++) { c.strokeStyle = y % 5 === 0 ? '#cfc2ee' : '#e8e0f8'; c.beginPath(); c.moveTo(0, Y(y)); c.lineTo(W, Y(y)); c.stroke(); }
+  if (hooks && hooks.mid) hooks.mid(X, Y);
+  c.strokeStyle = INK; c.lineWidth = 2.6; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(0, Y(0)); c.lineTo(W, Y(0)); c.moveTo(X(0), 0); c.lineTo(X(0), H); c.stroke();
+  const step = sx < 26 ? 2 : 1;
+  for (let i = XR[0] + 1; i < XR[1]; i++) if (i && i % step === 0) halo(c, String(i).replace('-', M), X(i), Y(0) + 12, '11px sans-serif', '#4a4560');
+  for (let i = Math.ceil(YR[0]); i <= YR[1]; i++) if (i && i % step === 0) halo(c, String(i).replace('-', M), X(0) - 9, Y(i), '11px sans-serif', '#4a4560', 'right');
+  halo(c, 'x', W - 10, Y(0) - 12, 'bold 14px sans-serif'); halo(c, 'y', X(0) + 12, 10, 'bold 14px sans-serif');
+  halo(c, 'O', X(0) - 9, Y(0) + 12, '12px sans-serif', '#4a4560', 'right');
+  return { X: X, Y: Y, sx: sx, sy: sy };
+}
+function strokePts(c, X, Y, pts, col, opt) {
+  opt = opt || {};
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
+  const path = () => { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(X(p[0]), Y(p[1])) : c.moveTo(X(p[0]), Y(p[1]))); c.stroke(); };
+  if (opt.dash) { c.setLineDash(opt.dash); c.strokeStyle = col; c.lineWidth = 2.4; path(); }
+  else { c.strokeStyle = INK; c.lineWidth = 7.5; path(); c.strokeStyle = col; c.lineWidth = 4; path(); }
+  c.restore();
+}
+/* 그래프 위 정보 상자: 식 + 사분면 + 정의역/치역 (루트는 직접 그린다) */
+function infoBox(c, W, H, d, col, alpha, right, top, idx) {
+  const l2 = '정의역 ' + d.dom + '   치역 ' + d.ran;
+  const meas = f => {
+    c.font = 'bold ' + 13 * f + 'px sans-serif'; const pw = c.measureText(d.pre).width, iw = c.measureText(d.inner).width;
+    c.font = 'bold ' + 11 * f + 'px sans-serif'; const qw = c.measureText(d.quad).width;
+    c.font = 11.5 * f + 'px sans-serif'; const w2 = c.measureText(l2).width;
+    const bd = d.badge ? 22 * f : 0;
+    return { pw: pw, iw: iw, bd: bd, w: Math.max(bd + pw + 12 * f + iw + 6 * f + 10 * f + qw, w2) + 18 * f };
+  };
+  let f = 1; const nat = meas(1).w, maxW = W / 2 - 18; if (nat > maxW) f = Math.max(.68, maxW / nat);
+  const m = meas(f), bw = m.w, bh = 49 * f;
+  const bx = right ? W - 8 - bw : 8, by = top ? 8 + idx * (bh + 6) : H - 8 - bh - idx * (bh + 6);
+  c.save(); c.globalAlpha = alpha;
+  c.beginPath(); c.roundRect(bx, by, bw, bh, 9 * f); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2.6; c.strokeStyle = col; c.stroke();
+  const cy = by + 19 * f, lx = bx + 9 * f;
+  if (d.badge) {
+    c.beginPath(); c.arc(lx + 8 * f, cy, 8 * f, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+    c.fillStyle = '#fff'; c.font = 'bold ' + 11 * f + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(d.badge, lx + 8 * f, cy + .5);
+  }
+  const px = lx + m.bd, rx = px + m.pw;
+  c.fillStyle = INK; c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = 'bold ' + 13 * f + 'px sans-serif';
+  c.fillText(d.pre, px, cy);
+  c.beginPath(); c.moveTo(rx, cy + 1 * f); c.lineTo(rx + 2.6 * f, cy - 1 * f); c.lineTo(rx + 5.6 * f, cy + 7 * f); c.lineTo(rx + 10 * f, cy - 9 * f); c.lineTo(rx + 12 * f + m.iw + 4 * f, cy - 9 * f);
+  c.lineWidth = 1.8; c.strokeStyle = INK; c.lineJoin = 'miter'; c.stroke();
+  c.fillText(d.inner, rx + 12 * f, cy);
+  c.fillStyle = col === BASE ? '#d96a1c' : col; c.font = 'bold ' + 11 * f + 'px sans-serif';
+  c.fillText(d.quad, rx + 12 * f + m.iw + 4 * f + 10 * f, cy);
+  c.fillStyle = INK; c.font = 11.5 * f + 'px sans-serif'; c.fillText(l2, lx, by + 38 * f);
+  c.restore();
+}
+
+/* =====================================================================
+   1번 카드: y = √x 의 대칭이동
+   ===================================================================== */
+const SYM = {
+  y: { name: 'y축 대칭', color: '#14b8a6', quad: '제2사분면', dom: 'x ≤ 0', ran: 'y ≥ 0', q: 2, pre: 'y=', inner: M + 'x',
+       T: (x, y, s) => [x * Math.cos(Math.PI * s), y] },
+  x: { name: 'x축 대칭', color: '#ff5d8f', quad: '제4사분면', dom: 'x ≥ 0', ran: 'y ≤ 0', q: 4, pre: 'y=' + M, inner: 'x',
+       T: (x, y, s) => [x, y * Math.cos(Math.PI * s)] },
+  o: { name: '원점 대칭', color: '#4f7cff', quad: '제3사분면', dom: 'x ≤ 0', ran: 'y ≤ 0', q: 3, pre: 'y=' + M, inner: M + 'x',
+       T: (x, y, s) => { const t = Math.PI * s, c = Math.cos(t), n = Math.sin(t); return [x * c - y * n, x * n + y * c]; } }
+};
+const BASEI = { pre: 'y=', inner: 'x', quad: '제1사분면', dom: 'x ≥ 0', ran: 'y ≥ 0', q: 1 };
+const ORDER = ['y', 'x', 'o'];
+const st = { y: { on: false, s: 0 }, x: { on: false, s: 0 }, o: { on: false, s: 0 } };
+let raf = 0, last = 0;
+const ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const cv1 = $('#cv1');
+
+function drawSym() {
+  const g = fit(cv1); if (!g) return;
+  const c = g.c, W = g.W, H = g.H;
+  const fr = frame(c, W, H, {
+    bg: (X, Y) => {
+      const shade = (q, col) => {
+        c.fillStyle = col;
+        const x0 = (q === 1 || q === 4) ? 0 : XR[0], x1 = (q === 1 || q === 4) ? XR[1] : 0;
+        const y0 = (q === 1 || q === 2) ? 0 : YR[0], y1 = (q === 1 || q === 2) ? YR[1] : 0;
+        c.fillRect(X(x0), Y(y1), X(x1) - X(x0), Y(y0) - Y(y1));
+      };
+      ORDER.forEach(k => { if (st[k].s >= 0.98) shade(SYM[k].q, SYM[k].color + '22'); });
+      shade(1, BASE + '22');
+    },
+    mid: (X, Y) => {
+      c.save(); c.lineCap = 'round'; c.lineWidth = 6;
+      ['y', 'x'].forEach(k => {
+        if (st[k].s <= 0) return;
+        c.globalAlpha = Math.min(1, ease(st[k].s) * 1.4); c.strokeStyle = SYM[k].color; c.beginPath();
+        if (k === 'y') { c.moveTo(X(0), 0); c.lineTo(X(0), H); } else { c.moveTo(0, Y(0)); c.lineTo(W, Y(0)); }
+        c.stroke();
+      });
+      c.restore();
+    }
+  });
+  const X = fr.X, Y = fr.Y;
+  const pts = T => { const a = []; for (let i = 0; i <= 150; i++) { const u = 3.2 * i / 150, p = T(u * u, u); a.push(p); } return a; };
+  ORDER.forEach(k => {
+    if (st[k].s <= 0) return;
+    const e = ease(st[k].s);
+    c.save(); c.globalAlpha = Math.min(1, st[k].s * 6);
+    strokePts(c, X, Y, pts((x, y) => SYM[k].T(x, y, e)), SYM[k].color);
+    c.restore();
+  });
+  strokePts(c, X, Y, pts((x, y) => [x, y]), BASE);
+  if (st.o.s > 0) {
+    c.beginPath(); c.arc(X(0), Y(0), 9, 0, Math.PI * 2); c.fillStyle = SYM.o.color; c.globalAlpha = Math.min(1, st.o.s * 2); c.fill();
+    c.lineWidth = 3; c.strokeStyle = INK; c.stroke(); c.globalAlpha = 1;
+  }
+  /* 정보 상자 */
+  const place = (d, col, alpha) => infoBox(c, W, H, d, col, alpha, d.q === 1 || d.q === 4, d.q === 1 || d.q === 2, 0);
+  ORDER.forEach(k => { if (st[k].s > 0.85) place(SYM[k], SYM[k].color, Math.min(1, (st[k].s - 0.85) / 0.15)); });
+  place(BASEI, BASE, 1);
+}
+function frameLoop(ts) {
+  const dt = Math.min(.05, (ts - last) / 1000 || 0); last = ts;
+  let moving = false;
+  ORDER.forEach(k => {
+    const o = st[k], tgt = o.on ? 1 : 0;
+    if (o.s === tgt) return;
+    if (reduce) { o.s = tgt; return; }
+    o.s += Math.sign(tgt - o.s) * dt / 0.9;
+    if ((tgt === 1 && o.s >= 1) || (tgt === 0 && o.s <= 0)) o.s = tgt; else moving = true;
+  });
+  drawSym();
+  raf = moving ? requestAnimationFrame(frameLoop) : 0;
+}
+function kick() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frameLoop); } }
+function renderSymPanel() {
+  const act = ORDER.filter(k => st[k].on);
+  $('#results').innerHTML = act.length ? '' : '<div class="empty">버튼을 누르기 전에 먼저 예상해 보세요.<br>그래프는 어느 사분면에 생길까요? 식은 어떻게 바뀔까요?</div>';
+  $$('.sbtn').forEach(b => b.setAttribute('aria-pressed', st[b.dataset.k].on ? 'true' : 'false'));
+  $('#note1').innerHTML = act.length
+    ? '주황색이 처음 그래프, 색깔 곡선이 ' + act.map(k => SYM[k].name).join(', ') + '으로 옮긴 그래프입니다.'
+    : '주황색 곡선이 처음 그래프 ' + F.base + ' 입니다. 버튼을 눌러 보세요.';
+}
+$$('.sbtn').forEach(b => b.addEventListener('click', () => { const k = b.dataset.k; st[k].on = !st[k].on; renderSymPanel(); kick(); }));
+$('#allBtn').addEventListener('click', () => { ORDER.forEach(k => st[k].on = true); renderSymPanel(); kick(); });
+$('#resetBtn').addEventListener('click', () => { ORDER.forEach(k => st[k].on = false); renderSymPanel(); kick(); });
+
+/* =====================================================================
+   2번 카드: y = ±√(ax) 에서 a 의 크기 비교
+   ===================================================================== */
+const A = { a1: 3, s1: 1, a2: 4, s2: 1, cmp: false, ghost: true };
+const cv2 = $('#cv2');
+function ptsA(a, s) {
+  const sg = a > 0 ? 1 : -1, r = Math.abs(a), umax = Math.min(8, Math.sqrt(10.6 * r)), out = [];
+  for (let i = 0; i <= 220; i++) { const u = umax * i / 220; out.push([sg * u * u / r, s * u]); }
+  return out;
+}
+const quadOf = (a, s) => a > 0 ? (s > 0 ? '제1사분면' : '제4사분면') : (s > 0 ? '제2사분면' : '제3사분면');
+const fm = (a, s) => fx(['y', '=', s > 0 ? sq(cs(a) + 'x') : neg(sq(cs(a) + 'x'))]);
+
+/* 곡선 옆에 떠 있는 식 이름표 */
+function tagMeasure(c, d) {
+  c.font = 'bold 14px sans-serif';
+  const pw = c.measureText(d.pre).width, iw = c.measureText(d.inner).width, bd = d.badge ? 24 : 0;
+  return { pw: pw, iw: iw, bd: bd, w: bd + pw + 12 + iw + 8 + 16, h: 31 };
+}
+function badgeDot(c, cx, cy, r, col, txt) {
+  c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fillStyle = col; c.fill();
+  c.fillStyle = '#fff'; c.font = 'bold ' + (r + 3) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(txt, cx, cy + .5);
+}
+function tagDraw(c, d, m, col, x, y) {
+  c.save();
+  c.beginPath(); c.roundRect(x, y, m.w, m.h, 9); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2.8; c.strokeStyle = col; c.stroke();
+  const cy = y + 20, lx = x + 8;
+  if (d.badge) badgeDot(c, lx + 9, cy, 9, col, d.badge);
+  const px = lx + m.bd, rx = px + m.pw;
+  c.fillStyle = INK; c.textAlign = 'left'; c.textBaseline = 'middle'; c.font = 'bold 14px sans-serif'; c.fillText(d.pre, px, cy);
+  c.beginPath(); c.moveTo(rx, cy + 1); c.lineTo(rx + 2.8, cy - 1); c.lineTo(rx + 6.2, cy + 8); c.lineTo(rx + 11, cy - 10); c.lineTo(rx + 12 + m.iw + 4, cy - 10);
+  c.lineWidth = 1.9; c.strokeStyle = INK; c.lineJoin = 'miter'; c.stroke();
+  c.fillText(d.inner, rx + 12, cy);
+  c.restore();
+}
+/* 사분면, 정의역, 치역을 보여 주는 작은 상자 */
+function liteMeasure(c, d) {
+  const l2 = '정의역 ' + d.dom + '   치역 ' + d.ran, bd = d.badge ? 22 : 0;
+  c.font = 'bold 11.5px sans-serif'; const qw = c.measureText(d.quad).width;
+  c.font = '11.5px sans-serif'; const w2 = c.measureText(l2).width;
+  return { l2: l2, bd: bd, w: Math.max(bd + qw, w2) + 18, h: 42 };
+}
+function liteDraw(c, d, m, col, x, y) {
+  c.save();
+  c.beginPath(); c.roundRect(x, y, m.w, m.h, 9); c.fillStyle = '#fff'; c.fill(); c.lineWidth = 2.6; c.strokeStyle = col; c.stroke();
+  if (d.badge) badgeDot(c, x + 17, y + 14, 8, col, d.badge);
+  c.textAlign = 'left'; c.textBaseline = 'middle';
+  c.fillStyle = col; c.font = 'bold 11.5px sans-serif'; c.fillText(d.quad, x + 9 + m.bd, y + 14);
+  c.fillStyle = INK; c.font = '11.5px sans-serif'; c.fillText(m.l2, x + 9, y + 31);
+  c.restore();
+}
+const overlap = (r1, r2) => r1.x < r2.x + r2.w && r2.x < r1.x + r1.w && r1.y < r2.y + r2.h && r2.y < r1.y + r1.h;
+const hitsLine = (r, line) => line.some(p => p[0] > r.x - 6 && p[0] < r.x + r.w + 6 && p[1] > r.y - 6 && p[1] < r.y + r.h + 6);
+
+function drawA() {
+  const g = fit(cv2); if (!g) return;
+  const c = g.c, W = g.W, H = g.H;
+  const curves = [{ a: A.a1, s: A.s1, col: C1, n: '1' }];
+  if (A.cmp) curves.push({ a: A.a2, s: A.s2, col: C2, n: '2' });
+  const fr = frame(c, W, H, {
+    bg: (X, Y) => {
+      curves.forEach(cu => {
+        c.fillStyle = cu.col + '1c';
+        const x0 = cu.a > 0 ? X(0) : X(XR[0]), x1 = cu.a > 0 ? X(XR[1]) : X(0);
+        const y0 = cu.s > 0 ? Y(YR[1]) : Y(0), y1 = cu.s > 0 ? Y(0) : Y(YR[0]);
+        c.fillRect(x0, y0, x1 - x0, y1 - y0);
+      });
+    }
+  });
+  const X = fr.X, Y = fr.Y;
+  const scr = pts => pts.map(p => [X(p[0]), Y(p[1])]);
+  const lines = [], own = [];
+  if (A.ghost) { const gp = ptsA(1, 1); strokePts(c, X, Y, gp, GHOST, { dash: [3, 6] }); lines.push(scr(gp)); }
+  curves.forEach(cu => { const pp = ptsA(cu.a, cu.s); strokePts(c, X, Y, pp, cu.col); const sl = scr(pp); lines.push(sl); own.push(sl); });
+
+  /* 이름표: 곡선 바로 옆에 두되, 다른 이름표나 다른 곡선과 겹치면 다른 자리를 고른다 */
+  const rects = [];
+  curves.forEach((cu, i) => {
+    const r = Math.abs(cu.a), sg = cu.a > 0 ? 1 : -1;
+    const mate = curves.length > 1 ? curves[1 - i] : null;
+    const same = mate && (mate.a > 0) === (cu.a > 0) && mate.s === cu.s;
+    const innerPref = same && (Math.abs(mate.a) > r || (Math.abs(mate.a) === r && i === 1));
+    const d = { pre: cu.s > 0 ? 'y=' : 'y=' + M, inner: cs(cu.a) + 'x', badge: A.cmp ? cu.n : null };
+    const m = tagMeasure(c, d);
+    const uo = Math.min(4, Math.sqrt(5.8 * r)), ui = Math.min(3.2, Math.sqrt(4.2 * r));
+    const mk = (u, inner) => {
+      const ax = X(sg * u * u / r), ay = Y(cu.s * u);
+      const dx = (sg > 0 ? -1 : 1) * (inner ? -1 : 1) * (m.w / 2 + 12), dy = (cu.s > 0 ? -1 : 1) * (inner ? -1 : 1) * (m.h / 2 + 9);
+      return { x: Math.max(4, Math.min(W - 4 - m.w, ax + dx - m.w / 2)), y: Math.max(4, Math.min(H - 4 - m.h, ay + dy - m.h / 2)), w: m.w, h: m.h };
+    };
+    const list = innerPref ? [[ui, true], [uo, false], [uo, true], [ui, false], [uo * .6, false], [uo * .6, true]]
+                           : [[uo, false], [ui, true], [uo, true], [ui, false], [uo * .6, false], [uo * .6, true]];
+    const others = own.filter((l, j) => j !== i);
+    let pick = null;
+    for (const t of list) {
+      const rc = mk(t[0], t[1]);
+      if (!rects.some(q => overlap(rc, q)) && !others.some(l => hitsLine(rc, l))) { pick = rc; break; }
+    }
+    if (!pick) pick = mk(list[0][0], list[0][1]);
+    tagDraw(c, d, m, cu.col, pick.x, pick.y);
+    rects.push(pick);
+  });
+
+  /* 사분면, 정의역, 치역 상자: 곡선과 겹치지 않는 모서리를 고른다 */
+  curves.forEach(cu => {
+    const d = { quad: quadOf(cu.a, cu.s), dom: cu.a > 0 ? 'x ≥ 0' : 'x ≤ 0', ran: cu.s > 0 ? 'y ≥ 0' : 'y ≤ 0', badge: A.cmp ? cu.n : null };
+    const m = liteMeasure(c, d);
+    const pos = { BR: [W - 8 - m.w, H - 8 - m.h], TR: [W - 8 - m.w, 8], BL: [8, H - 8 - m.h], TL: [8, 8] };
+    const side = cu.a > 0 ? 'R' : 'L', other = cu.a > 0 ? 'L' : 'R', v1 = cu.s > 0 ? 'B' : 'T', v2 = cu.s > 0 ? 'T' : 'B';
+    const order = [v1 + side, v2 + side, v1 + other, v2 + other];
+    let pick = null;
+    for (const strict of [true, false]) {
+      for (const k of order) {
+        const r = { x: pos[k][0], y: pos[k][1], w: m.w, h: m.h };
+        if (!rects.some(q => overlap(r, q)) && (!strict || !lines.some(l => hitsLine(r, l)))) { pick = r; break; }
+      }
+      if (pick) break;
+    }
+    if (!pick) return;
+    liteDraw(c, d, m, cu.col, pick.x, pick.y);
+    rects.push(pick);
+  });
+}
+function noteA() {
+  const a = A.a1, s = A.s1, b = A.a2, t2 = A.s2, ra = Math.abs(a), rb = Math.abs(b);
+  const q = (x, y) => quadOf(x, y);
+  let t;
+  if (!A.cmp) {
+    let rel = '';
+    if (a === 1 && s > 0) rel = '1번 카드의 처음 그래프 ' + F.base + ' 입니다. ';
+    else if (a < 0 && s > 0) rel = fm(-a, 1) + ' 를 y축에 대칭이동한 그래프입니다. ';
+    else if (a > 0 && s < 0) rel = fm(a, 1) + ' 를 x축에 대칭이동한 그래프입니다. ';
+    else if (a < 0 && s < 0) rel = fm(-a, 1) + ' 를 원점에 대칭이동한 그래프입니다. ';
+    t = fm(a, s) + ' : ' + rel + '<br>a = ' + fmt(a) + (a > 0 ? ' &gt; 0 이므로 x ≥ 0 인 쪽, ' : ' &lt; 0 이므로 x ≤ 0 인 쪽, ') +
+      (s > 0 ? '앞이 + 이므로 y ≥ 0 인 위쪽' : '앞에 ' + M + ' 가 있어서 y ≤ 0 인 아래쪽') + '(' + q(a, s) + ')에 있습니다.' +
+      (ra > 1 ? ' |a| = ' + ra + ' 이라서 |a| = 1 일 때보다 y축에 가깝고 가파릅니다.' : '');
+  } else {
+    const A1 = 'a<sub>1</sub>', A2 = 'a<sub>2</sub>';
+    if (ra === rb) {
+      if (a === b && s === t2) t = '두 식이 같아서 그래프가 완전히 겹칩니다.';
+      else if (a === b) t = A1 + ', ' + A2 + ' 는 같고 앞의 부호만 반대라서 두 그래프는 <b>x축</b>에 대칭입니다.';
+      else if (s === t2) t = A1 + ', ' + A2 + ' 의 부호만 반대라서 두 그래프는 <b>y축</b>에 대칭입니다.';
+      else t = A1 + ', ' + A2 + ' 와 앞의 부호가 모두 반대라서 두 그래프는 <b>원점</b>에 대칭입니다.';
+    } else {
+      const where = q(a, s) === q(b, t2) ? '둘 다 ' + q(a, s) + '에 있습니다.' : '1번은 ' + q(a, s) + ', 2번은 ' + q(b, t2) + '에 있습니다.';
+      t = where + ' |' + A1 + '| = ' + ra + ', |' + A2 + '| = ' + rb + ' 이므로 ' + (ra > rb ? '1' : '2') + '번 곡선이 y축에 더 가깝고 더 가파릅니다.';
+    }
+  }
+  $('#note2').innerHTML = t;
+}
+function chipsHTML() {
+  return '<button type="button" class="chip" data-s="1">' + fx(['y', '=', sq('ax')]) + '</button>' +
+         '<button type="button" class="chip" data-s="-1">' + fx(['y', '=', neg(sq('ax'))]) + '</button>';
+}
+function updateA() {
+  $('#a1lab').innerHTML = A.cmp ? 'a<sub>1</sub>' : 'a';
+  $('#a1out').textContent = fmt(A.a1); $('#a2out').textContent = fmt(A.a2);
+  $('#a2box').hidden = !A.cmp;
+  $$('#sg1 .chip').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === A.s1 ? 'true' : 'false'));
+  $$('#sg2 .chip').forEach(b => b.setAttribute('aria-pressed', +b.dataset.s === A.s2 ? 'true' : 'false'));
+  noteA(); drawA();
+}
+function slider(id, key) {
+  const el = $('#' + id); let prev = +el.value;
+  el.addEventListener('input', () => {
+    let v = +el.value;
+    if (v === 0) { v = prev > 0 ? -1 : 1; el.value = v; }
+    prev = v; A[key] = v; updateA();
+  });
+}
+slider('a1', 'a1'); slider('a2', 'a2');
+$('#sg1').innerHTML = chipsHTML(); $('#sg2').innerHTML = chipsHTML();
+$$('#sg1 .chip').forEach(b => b.addEventListener('click', () => { A.s1 = +b.dataset.s; updateA(); }));
+$$('#sg2 .chip').forEach(b => b.addEventListener('click', () => { A.s2 = +b.dataset.s; updateA(); }));
+$('#cmp').addEventListener('change', e => { A.cmp = e.target.checked; updateA(); });
+$('#ghost').addEventListener('change', e => { A.ghost = e.target.checked; updateA(); });
+
+/* ---------- 탭 ---------- */
+const TABS = ['sym', 'a'];
+let cur = 'sym';
+function showTab(n) {
+  if (TABS.indexOf(n) < 0) n = 'sym';
+  cur = n;
+  TABS.forEach(t => { $('#tab-' + t).hidden = t !== n; });
+  $$('.tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === n ? 'true' : 'false'));
+  redraw();
+}
+function redraw() { if (cur === 'sym') drawSym(); else updateA(); }
+$$('.tabs button').forEach(b => b.addEventListener('click', () => {
+  showTab(b.dataset.tab);
+  try { location.hash = '#' + b.dataset.tab; } catch (e) {}
+}));
+window.addEventListener('hashchange', () => { try { showTab(location.hash.slice(1)); } catch (e) {} });
+window.addEventListener('resize', redraw);
+
+/* ---------- 시작 ---------- */
+$('#sub').innerHTML = '공통수학2 · ' + F.base + ' 의 대칭이동, ' + F.gen + ' 에서 a의 크기 비교';
+$('#baseF').innerHTML = F.base;
+$('#genF').innerHTML = fx(['y', '=', fx(['±', sq('ax')], true)]);
+$('#ghostF').innerHTML = F.base;
+$('#tabSym').innerHTML = '<span>1.</span>' + F.base + '<span>대칭이동</span>';
+$('#tabA').innerHTML = '<span>2.</span>' + F.gen + '<span>a의 크기 비교</span>';
+renderSymPanel();
+let start = 'sym'; try { start = location.hash.slice(1) || 'sym'; } catch (e) {}
+showTab(start);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
+})();
+</script>
+</body>
+</html>
