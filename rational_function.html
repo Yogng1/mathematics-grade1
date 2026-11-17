@@ -495,6 +495,16 @@ html.mobplay, html.mobplay body { overflow: hidden; overscroll-behavior: none; }
 #tab-run.mob .tapnote { display: block; flex: none; text-align: center; font-family: var(--font-d); font-size: 1.15rem; line-height: 1.3; color: var(--ink); padding: 6px 4px; border: 3px dashed var(--ink); border-radius: 12px; background: #fff7df; }
 #tab-run.mob .pad { justify-content: center; }
 
+/* 모바일 문제칸: 더 작게, 도로(아래 레인)를 가리지 않도록 */
+#tab-run.mob .runq { top: calc(var(--ct) + 38px); height: max(calc(var(--ch) * .2), 72px); padding: 2px 8px; border-radius: 8px; }
+#tab-run.mob .runq .rqp { font-size: .8rem; line-height: 1.35; }
+#tab-run.mob .runq .rqh { font-size: .72rem; }
+#tab-run.mob .lanes { gap: 4px; margin-top: 2px; }
+#tab-run.mob .lanes > span { font-size: .74rem; line-height: 1.3; padding: 0 5px; border-width: 1.5px; }
+#tab-run.mob .lanes small { font-size: .66rem; margin-right: 3px; }
+/* 알림 문구는 하늘 쪽(문제칸 바로 아래)에 띄워서 레인을 가리지 않게 */
+#tab-run.mob .toast { bottom: auto; top: calc(38px + max(calc(var(--ch) * .2), 72px) + 6px); }
+
 </style>
 </head>
 <body>
