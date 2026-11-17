@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>유리함수 정복하기</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -505,6 +508,10 @@ html.mobplay, html.mobplay body { overflow: hidden; overscroll-behavior: none; }
 /* 알림 문구는 하늘 쪽(문제칸 바로 아래)에 띄워서 레인을 가리지 않게 */
 #tab-run.mob .toast { bottom: auto; top: calc(38px + max(calc(var(--ch) * .2), 72px) + 6px); }
 
+#tab-run.mob #fsBtn { display: inline-block; }
+#tab-run.mob .tapnote { font-size: .88rem; line-height: 1.4; padding: 5px 4px; }
+#tab-run.mob .pad { gap: 6px; padding-top: 6px; padding-bottom: 6px; } #tab-run.mob .pad .item { height: 24%; }
+
 </style>
 </head>
 <body>
@@ -638,7 +645,7 @@ html.mobplay, html.mobplay body { overflow: hidden; overscroll-behavior: none; }
         <div class="toast" id="runToast" hidden></div>
       </div>
       <div class="pad">
-        <div class="tapnote">탭하면 점프!</div>
+        <div class="tapnote">탭하면 점프!<br>화면을 쓸면 이동!</div>
         <button class="btn" id="btnJump"><canvas class="ico" id="icoJump" width="56" height="56"></canvas><span>점프</span><kbd>Space</kbd></button>
         <button class="btn sub item empty" id="btnClock"><canvas class="ico" id="icoClock" width="56" height="56"></canvas><span>시계</span><kbd>Q</kbd><b id="clockN">0</b></button>
         <button class="btn sub item empty" id="btnShield"><canvas class="ico" id="icoShield" width="56" height="56"></canvas><span>무적</span><kbd>W</kbd><b id="shieldN">0</b></button>
@@ -1986,6 +1993,7 @@ let easyMode = false;
 function runStart(e) {
   if (typeof e === 'boolean') easyMode = e;
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { actx = null; }
+  if (mobRun) mobFs(true);   /* 시작 버튼을 누른 순간에도 한 번 더 전체화면을 시도한다 */
   runReset(); R.state = 'play'; overlay('none'); setPanel(null);
   if (easyMode) { R.speed = EASY_SPEED; R.itemT = 1; }
   $('#modeChip').hidden = !easyMode;
@@ -2087,12 +2095,30 @@ function exitFs() {
   if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) {} }
   fsPseudo = false; setFs(false);
 }
-$('#fsBtn').addEventListener('click', () => { if (fsActive()) exitFs(); else enterFs(); });
-document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && !fsPseudo) setFs(false); });
+function fsNote(text) {
+  showToast(text, 'bad', 6);
+  setTimeout(() => { if (R.state !== 'play') { R.toast = null; $('#runToast').hidden = true; } }, 5500);
+}
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function mobFs(silent) {
+  if (fsEl()) { if (!silent) { try { (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch (x) {} } return; }
+  const el = $('#tab-run'), rq = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!rq) { if (!silent) fsNote('아이폰 사파리는 전체화면을 막아 둡니다. 공유 버튼에서 홈 화면에 추가한 뒤 그 아이콘으로 열면 주소창 없이 쓸 수 있습니다.'); return; }
+  const fail = () => { if (!silent) fsNote('이 화면에서는 전체화면이 막혀 있습니다. 내려받은 HTML 파일을 크롬에서 직접 열면 됩니다.'); };
+  try {
+    const p = rq.call(el, { navigationUI: 'hide' });
+    if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (x) {} runResize(); }).catch(fail);
+  } catch (x) { fail(); }
+}
+$('#fsBtn').addEventListener('click', () => { if (mobRun) mobFs(false); else if (fsActive()) exitFs(); else enterFs(); });
+document.addEventListener('fullscreenchange', () => {
+  if (mobRun) { $('#fsBtn').textContent = document.fullscreenElement ? '전체화면 해제' : '전체화면'; setTimeout(runResize, 120); return; }
+  if (!document.fullscreenElement && !fsPseudo) setFs(false);
+});
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && fsActive() && !mobRun) exitFs(); });
 function enterMob() {
   const el = $('#tab-run');
-  el.classList.add('mob'); document.documentElement.classList.add('mobplay');
+  el.classList.add('mob'); document.documentElement.classList.add('mobplay'); $('#fsBtn').textContent = fsEl() ? '전체화면 해제' : '전체화면';
   runResize(); setTimeout(runResize, 150);
   try {
     const p = el.requestFullscreen && el.requestFullscreen({ navigationUI: 'hide' });
